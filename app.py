@@ -6,7 +6,12 @@ from sklearn.ensemble import RandomForestClassifier
 
 st.title('Weather Prediction')
 
-X_train, X_test, y_train, y_test = load_and_preprocess_data('weatherAUS.csv')
+# Load and preprocess data
+try:
+    X_train, X_test, y_train, y_test = load_and_preprocess_data('weatherAUS.csv')
+except FileNotFoundError as e:
+    st.error(f"Error: {e}")
+    st.stop()
 
 model_choice = st.selectbox('Choose Model', ['Naive Bayes', 'Decision Tree', 'Random Forest'])
 
