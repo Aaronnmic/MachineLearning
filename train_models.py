@@ -1,48 +1,52 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder
 from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
-import joblib
+from sklearn.metrics import accuracy_score, confusion_matrix
 
-# Load dataset
-df = pd.read_csv('weatherAUS.csv')
-df = df.dropna()
+def load_and_preprocess_data(filepath):
+    # Load Dataset
+    data = pd.read_csv(filepath)
 
-# Adjusted features and target based on actual column names
-X = df[['MaxTemp', 'WindSpeed9am', 'Pressure9am', 'Rainfall']]
-y = df['RainTomorrow']
+    # Drop rows with missing values
+    data.dropna(inplace=True)
 
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Drop the 'Date' column
+    data.drop(columns=['Date'], inplace=True)
 
-# Standardize data
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+    # Encode categorical variables
+    le = LabelEncoder()
+    categorical_cols = ['Location', 'WindGustDir', 'WindDir9am', 'WindDir3pm', 'RainToday', 'RainTomorrow']
 
-# Train Naive Bayes model
-nb_model = GaussianNB()
-nb_model.fit(X_train, y_train)
-joblib.dump(nb_model, 'nb_model.pkl')
+    for col in categorical_cols:
+        data[col] = le.fit_transform(data[col])
 
-# Train Decision Tree model
-dt_model = DecisionTreeClassifier()
-dt_model.fit(X_train, y_train)
-joblib.dump(dt_model, 'dt_model.pkl')
+    # Split the data into features and target variable
+    X = data.drop(columns=['RainTomorrow'])
+    y = data['RainTomorrow']
 
-# Train Random Forest model
-rf_model = RandomForestClassifier()
-rf_model.fit(X_train, y_train)
-joblib.dump(rf_model, 'rf_model.pkl')
+    return train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Evaluate models
-nb_preds = nb_model.predict(X_test)
-dt_preds = dt_model.predict(X_test)
-rf_preds = rf_model.predict(X_test)
+def train_and_evaluate_model(X_train, X_test, y_train, y_test, model):
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred)
+    return accuracy, cm
 
-print("Naive Bayes Accuracy:", accuracy_score(y_test, nb_preds))
-print("Decision Tree Accuracy:", accuracy_score(y_test, dt_preds))
-print("Random Forest Accuracy:", accuracy_score(y_test, rf_preds))
+if __name__ == "__main__":
+    X_train, X_test, y_train, y_test = load_and_preprocess_data('weatherAUS.csv')
+
+    # Initialize the models
+    models = {
+        'Naive Bayes': GaussianNB(),
+        'Decision Tree': DecisionTreeClassifier(),
+        'Random Forest': RandomForestClassifier()
+    }
+
+    for name, model in models.items():
+        accuracy, cm = train_and_evaluate_model(X_train, X_test, y_train, y_test, model)
+        print(f'{name} Accuracy: {accuracy}')
+        print(f'{name} Confusion Matrix:\n {cm}')
